@@ -1,0 +1,5 @@
+# speech-to-deck generated examples (local review only)
+speech-to-deck/examples/
+.DS_Store
+node_modules/
+__pycache__/
