@@ -42,7 +42,7 @@ An optional `<style>` block first (deck-specific CSS, scope it to classes you ad
 
 ### The canvas
 
-Every slide is a fixed **1920 × 1080 px** canvas, scaled to fit any screen. Design in those pixels. The theme sets padding and type sizes; `.slide-body` is the content area (consulting about 1696 × 640 below the title, whiteboard about 1660 × 700, minimal centred in 1600 × 840). Content must fit without scrolling; QA flags overflow, overlap and text off the canvas.
+Every slide is a fixed **1920 × 1080 px** canvas, scaled to fit any screen. Design in those pixels. The theme sets padding and type sizes; `.slide-body` is the content area (consulting about 1696 × 640 below the title, whiteboard about 1660 × 700, minimal centred in 1600 × 840, doodle 1700 × 800 below the title or 1700 × 940 with `.slide-body.full`). Content must fit without scrolling; QA flags overflow, overlap and text off the canvas.
 
 ### Slide attributes
 
@@ -50,7 +50,7 @@ Every slide is a fixed **1920 × 1080 px** canvas, scaled to fit any screen. Des
 |---|---|
 | `data-title` | Short name for the overview, speaker view and QA. Always set it. |
 | `data-section` | Section name. In consulting it builds the tracker at top right (use 3–6 short section names). |
-| `data-layout` | `title`, `section`, `closing` switch to the theme's cover treatment in consulting (navy); in minimal and whiteboard the default centred stage already serves. `quote` centres the body (consulting); `summary` relaxes the word budget; `content` pins the head to the top (minimal). `blank` and `credits` end a deck that uses photos (see Images). |
+| `data-layout` | `title`, `section`, `closing` switch to the theme's cover treatment in consulting (navy); in minimal, whiteboard and doodle the default stage already serves. `quote` centres the body (consulting); `summary` relaxes the word budget; `content` pins the head to the top (minimal). `blank` and `credits` end a deck that uses photos (see Images). |
 | `data-cue` | Seconds into the recording where this slide's passage starts; `none` for synthesis slides. |
 | `data-tone` | Minimal only: `light` (white stage) or `black` (flat black). |
 | `data-tracker="off"`, `data-number="off"` | Hide the tracker or page number on one slide. |
@@ -65,10 +65,11 @@ Every slide is a fixed **1920 × 1080 px** canvas, scaled to fit any screen. Des
 - Print and the overview show every slide in its final state (replaced elements stay replaced).
 - Hidden steps keep their space (no layout jump when they appear). A box whose rows build one by one therefore shows its empty remainder until the last row arrives; size such boxes to their content or build the whole box at once.
 - Builds should mirror the speech: reveal a point when it is spoken. Do not build every slide by default; a quote or a statement often lands best with no build.
+- In doodle a step is not revealed but drawn: the pen draws its shapes and writes its text in document order, paced to the time until the next cue (see `style-doodle.md`). Text that is on the slide from the start is written on entry; `data-write="off"` on an element (or a parent) makes it simply be there.
 
 ### Emphasis and hand-drawn marks: `data-sketch`
 
-Draws an annotation around, under or through an element when it appears. Works in every style; whiteboard draws rough marker strokes, the others draw clean strokes.
+Draws an annotation around, under or through an element when it appears. Works in every style; whiteboard and doodle draw them by hand, the others draw clean strokes.
 
 ```html
 <span data-sketch="underline">the hardest</span>
@@ -82,13 +83,14 @@ Draws an annotation around, under or through an element when it appears. Works i
 - `data-sketch-step="n"` draws at step n; otherwise it draws with the element's `data-step`, or on entry. An element with only `data-sketch-step` may carry its own `data-cue`, so a mark can land on the exact words (underline "military-industrial complex" as it is said).
 - `data-sketch-color`: a marker name (`red`, `blue`, `green`, `orange`, `black`, `highlight`) or any CSS colour. `data-sketch-width`, `data-sketch-pad` (px) fine-tune.
 - Inline elements that wrap get one underline/highlight per line.
+- A `circle` (and a `box`) is always larger than the words it marks: the engine sizes the ring to clear the text. A ringed phrase inside a longer line is kept on one line; a phrase that is its whole label may wrap and is ringed as a block. So ring a short phrase (one to three words) and leave room for the ring: it reaches about a letter's width past each end and half the text height above and below, and must not run into neighbouring words or the line above (give the phrase its own line or label, or a side margin of about `.6em`). QA reports a ring that crosses its own words or its neighbours as a major finding; look at the shot of every ringed phrase as well.
 - A mark inside a stepped element draws with that element's step; give it `data-sketch-step` only to draw it later (on its own words, with its own `data-cue`).
 - Marks sit on the glyphs (baseline and cap height from the font), so `data-sketch-pad` is only for fine-tuning; never compensate with large negative pads.
 - Use marks for emphasis the speaker gives: what they stress, reject, connect. Two or three per slide at most.
 
 ### Freehand diagrams: `<svg class="sketch">`
 
-Draw with plain SVG primitives in a `viewBox`; in whiteboard the engine redraws each `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon` and `path` as a rough marker stroke and animates it being drawn. In other styles the SVG renders as authored (use `data-step` for reveals).
+Draw with plain SVG primitives in a `viewBox`; in whiteboard and doodle the engine redraws each `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon` and `path` as a hand-drawn stroke and animates it being drawn. In other styles the SVG renders as authored (use `data-step` for reveals).
 
 ```html
 <svg class="sketch" viewBox="0 0 1600 600" style="height: 600px">
@@ -101,7 +103,7 @@ Draw with plain SVG primitives in a `viewBox`; in whiteboard the engine redraws 
 ```
 
 - Colour classes `blue`, `red`, `green`, `orange` set stroke (and fill for `text`). `fill="…"` on a shape gives a sketchy fill; `data-fill-style`: `hachure` (default), `solid`, `zigzag`, `cross-hatch`, `dots`.
-- Shapes without `data-step` draw themselves in document order when the slide appears (keep it under about 12 shapes); stepped shapes draw at their step.
+- Shapes without `data-step` draw themselves in document order when the slide appears (keep it under about 12 shapes); stepped shapes draw at their step. A `data-step` on a `<g>` (or on the board around the drawing) draws everything inside it at that step.
 - `data-roughness="0.6"` on a shape makes it neater; `data-clean` keeps it untouched.
 - Text inside SVG: `class="small"` or `class="big"`; keep to short labels. For handwriting placed on a drawing (wrapped, written on, markable), use a board instead:
 
@@ -114,6 +116,21 @@ Draw with plain SVG primitives in a `viewBox`; in whiteboard the engine redraws 
 ```
 
   `.at` places a label by its left edge, `.at.r` by its right edge, `.at.c` by its centre (needs `--w`); sizes `.lbl-s`, `.lbl`, `.lbl-l`, `.mk`, `.mk-xl`; `.lag` makes a label wait for its drawing; `.nw` stops wrapping. Shapes on a board draw in document order; reorder the SVG to change the drawing order.
+
+### Icons and stick figures (doodle): `<g data-icon>`, `<g data-figure>`
+
+Inside `svg.sketch`, an empty `<g>` becomes a drawing. Both are placed by their top-left corner in the drawing's own pixels, take a colour class and `data-step` / `data-cue`, and are drawn stroke by stroke.
+
+```html
+<g data-icon="tabler:rocket" data-x="120" data-y="140" data-size="360"/>
+<g data-icon="lucide:handshake" data-x="700" data-y="200" data-size="240" class="blue" data-step="1" data-cue="31.2"/>
+<g data-figure="point" data-face="smile" data-x="1100" data-y="180" data-size="420" data-step="2"/>
+```
+
+- **Icons** come from two bundled stroke sets (Tabler, Lucide; about 7,400 icons, no brand logos). Find one with `python3 SKILL_DIR/scripts/icons.py find WORD [WORD…]`; it prints `set:name`, the number of shapes and the tags. `build.py` copies the strokes into the deck (and the set's licence notice with them) and warns about unknown names with close matches. `data-size` is the icon's width and height (default 200); `data-rotate` (degrees) and `data-flip` are optional.
+- **Figures**: `data-figure` is a pose (`stand`, `wave`, `point`, `present`, `cheer`, `think`, `shrug`, `hips`, `walk`, `run`, `sit`, `carry`), `data-face` an expression (`smile`, `happy`, `neutral`, `sad`, `surprised`, `none`), `data-size` the height (default 320; the box is half as wide), `data-flip` turns the figure to face left.
+- Draw at final size. Do not wrap icons, figures or shapes in a scaled `<g>`.
+- Icons are a doodle device. The other styles keep the rule at the end of this file: no stock icons.
 
 ### Charts: `<figure class="chart">`
 
@@ -150,7 +167,7 @@ Highlight the one bar or slice the slide is about; everything else stays neutral
 
 ## Shared components
 
-All three themes style these, each in its own way. Prefer them to custom CSS.
+All four themes style these, each in its own way (doodle and whiteboard in handwriting). Prefer them to custom CSS.
 
 | Markup | Use |
 |---|---|
@@ -184,7 +201,8 @@ All three themes style these, each in its own way. Prefer them to custom CSS.
 | `.kicker` | small category label above a block (consulting; never above titles) |
 | `.is-risk` (process, timeline), `.is-gap` (kv, contrast, stat num, bullet `b`) | the burnt-orange counterpart of `.is-key`: a gap, risk or warning (consulting) |
 | `.stats.words` | a scorecard whose values are words, not numbers (consulting) |
-| colour helpers | `.accent`, `.muted`; whiteboard `.blue .red .green .orange .black` |
+| colour helpers | `.accent`, `.muted`; whiteboard and doodle `.blue .red .green .orange .black` |
+| `.board` + `.at` labels, `.lbl-s .lbl .lbl-l .mk .mk-xl` | whiteboard, doodle: handwriting placed on a drawing (see Freehand diagrams) |
 
 ## Images (only when the user opted in to photos)
 
@@ -212,5 +230,9 @@ Credit every photo twice: briefly on its slide (`<span class="credit">Photo: NAS
 - Inline `style` is fine for one-off spacing (`margin-top`, a grid tweak); repeated tweaks go in the `<style>` block with a slide class (`<section class="slide s-costs">`).
 - Do not add headings like "Overview", "Key takeaways", "Agenda" unless the content is exactly that.
 - Number markers only for real sequences.
-- No emoji, no stock icons, no clip art. Shapes, type and charts carry the visuals.
+- No emoji, no stock icons, no clip art. Shapes, type and charts carry the visuals. (Doodle draws its line art from the bundled stroke icons and figures; that is its medium, see `style-doodle.md`.)
 - Keyboard map (for your hand-over message): ←/→ or Space to move, `P` listen along, `C` captions, `S` speaker view, `O` overview, `F` fullscreen, `B` black screen, `?` help, number + Enter to jump; print gives one page per slide.
+
+## Video export
+
+`scripts/export.sh OUT/deck.html [OUT/deck.mp4] [--captions] [--fps 25] [--from S] [--to S] [--width 1920] [--crf 20]` renders the listen-along as an MP4 (H.264 + AAC, the recording as the sound track). It steps the deck's clock frame by frame, so the result is exact and smooth whatever the machine's load, and takes roughly as long as the recording. Works for every style; slide changes are cuts, and slides with `data-cue="none"` are not in the video. Needs Google Chrome, Node 18+ and ffmpeg (the tools QA and transcription already use). Use `--from` / `--to` to render a short passage while refining.
