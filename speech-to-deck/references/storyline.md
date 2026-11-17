@@ -30,6 +30,7 @@ Count only the speaker's own talking time.
 | consulting | 1 slide per 1.5 min, plus title, summary, close | 8–10 | 13–16 | 40–110 |
 | whiteboard | 1 slide per 1.5–2 min | 7–9 | 11–14 | 10–45 |
 | minimal | 1 slide per 40–60 s | 12–16 | 20–28 | 1–20 |
+| doodle | 1 page per 40–60 s, each drawn in 3–6 steps | 12–16 | 20–28 | 5–30 |
 
 Think in **beats** (slides plus build steps), roughly one per spoken point. Minimal may give a short prepared speech of short sentences one slide per sentence; consulting folds several beats into one slide with builds. The budget is a guide, not a cap: a dense speech may run about 30 % over, and review may split a crowded slide. Very short recordings (under 3 min) still get at least a title, three to five content slides and a close. An explicit request for a slide count wins.
 
@@ -45,13 +46,14 @@ Think in **beats** (slides plus build steps), roughly one per spoken point. Mini
 - **Sequence**: process, timeline, steps. Only for content that really is a sequence.
 - **Pillars / list**: three or four parallel ideas.
 - **Diagram** (whiteboard especially): boxes and arrows, cause and effect, cycles, a map of the argument.
+- **Scene** (doodle: every page): one small drawing that shows the point (who, what, what changes), made of three to six elements drawn in the order the speaker names them. In the outline, write for each page what is drawn at which words; the words on the page are labels.
 - **Section divider**: only for decks over about 15 slides, or the consulting tracker does the job.
 - **Close**: the speaker's own ending, often a quote. Not "Thank you" or "Questions?".
 - **Credits** (only when the deck uses photos): one blank slide after the close, then a credits slide in fine print (`references/authoring.md`, Images). Uncued, and outside the slide budget.
 
 ## 5. Writing
 
-- **Titles by style.** Consulting: an action title, a full sentence stating the slide's conclusion, at most 2 lines (about 15 words), no full stop. Minimal: a few words. Whiteboard: a short spoken-style phrase, like what you would write at the top of the board.
+- **Titles by style.** Consulting: an action title, a full sentence stating the slide's conclusion, at most 2 lines (about 15 words), no full stop. Minimal: a few words. Whiteboard: a short spoken-style phrase, like what you would write at the top of the board. Doodle: a handwritten phrase on one line, or no title at all.
 - Use the speaker's vocabulary. Their best phrases belong in the deck verbatim, in quotation marks.
 - Plain words, active voice, sentence case. No filler labels ("Overview", "Key insights", "Introduction").
 - Numbers: write them as the speaker meant them ("$5.4 billion", "from 40 cents to more than 50 cents per person per week"), units always visible, direction of change exactly as said.
@@ -69,6 +71,7 @@ Think in **beats** (slides plus build steps), roughly one per spoken point. Mini
 - **Never reveal a line before it is said.** This beats "avoid trivial reveals": when the two conflict, keep the step and its cue.
 - **Set-up and payoff**: the slide arrives at the start of the sentence with its set-up visible (a grey `.setup`/`.lead` line, the question, the frame); the payoff appears as a step cued on the word that carries it ("…a date which will live in **infamy**"). Step cues go on the carrying word, not on the start of its segment: find it with `transcribe.py INPUT --pauses START SECONDS`.
 - **A step cue equal to its slide cue is a wasted click**: show that element on entry instead.
+- **Doodle**: cues decide how fast the pen draws (it has until the next cue), so plan the drawing against the time: about half to all of each passage in natural drawing time (`style-doodle.md`, Pacing), something drawn at least every 15–20 s, no uncued pages (they are not in the video), and the opening element of each page on entry rather than as a step.
 - **Keep it moving**: in listen-along, something should change at least every 60–90 s. If a passage runs longer, it is either a second slide or it has a point worth revealing (the line that proves the title).
 - **One step per spoken point.** Do not group two bullets into one step when the speaker says them 20 s apart; and do not reveal a line before it is said.
 - **Check every cue against `transcript.json`** (start of the segment containing the words); an interpolated time inside a long segment is fine, a cue 5 s early is not.

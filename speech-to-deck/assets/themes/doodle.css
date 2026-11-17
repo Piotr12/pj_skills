@@ -1,0 +1,199 @@
+/* Theme: doodle — the talk drawn while it is told.
+   White paper, black line art and handwriting that a marker draws stroke by stroke in step with
+   the speaker (deck.js pen mode), a little colour for meaning. The drawing is the delivery. */
+:root {
+  --paper: #FCFCFA;
+  --ink: #1C1E22;
+  --body: #24272C;
+  --muted: #5D646C;
+  --marker-black: #1C1E22;
+  --marker-blue: #1F5FD0;
+  --marker-red: #DF3B30;
+  --marker-green: #1B8A4B;
+  --marker-orange: #E8851C;
+  --marker-orange-ink: #A8500A; /* orange as text: the stroke colour is too light to read */
+  --marker-highlight: #FFE14A;
+  --accent: var(--marker-red);
+  --slide-bg: var(--paper);
+  --letterbox: #2A2C30;
+  --chrome-bg: rgba(28,30,34,.82);
+  --progress-color: var(--marker-blue);
+  --focus: var(--marker-blue);
+  --hand: "Kalam", "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive;
+  --ease: cubic-bezier(.45,.05,.35,1);
+  --build-dur: .12s;
+  --slide-dur: .4s;
+  --sketch-style: rough;
+  --sketch-multi: off;     /* one pass of the pen, not a doubled marker line */
+  --sketch-blend: multiply;
+  --sketch-color: var(--marker-red);
+  --sketch-width: 4;
+  --sketch-pad: 12;
+  --roughness: 1;
+  --icon-line: 4px;
+  --pen: on;               /* deck.js: draw and write everything in sequence, marker on the tip */
+  --pen-speed: 1;          /* px per ms at natural pace */
+  --pen-char: 55;          /* ms per written character at natural pace */
+  --pen-max: 3200;         /* ms: longest draw for one step when presenting by hand */
+  --pen-angle: 52;
+  --entry-delay: 420;      /* ms: the pen starts once the new page is in */
+  --highlight-opacity: .6;
+  --chart-font: 30;
+  --m: 110px;
+}
+
+.slide {
+  font-family: var(--hand); color: var(--body); font-size: 40px; line-height: 1.28;
+  background: radial-gradient(ellipse 1500px 860px at 50% 46%, #FFFFFF 0%, var(--paper) 62%, #F4F4F0 100%);
+}
+:where(.slide) :is(b, strong) { font-weight: 700; color: var(--ink); }
+.blue { color: var(--marker-blue); } .red { color: var(--marker-red); } .green { color: var(--marker-green); }
+.orange { color: var(--marker-orange-ink); } .black { color: var(--marker-black); } .muted { color: var(--muted); }
+
+/* A page: a short handwritten title, then the board (1700 x 800; .full without a title: 1700 x 940). */
+.slide-head { position: absolute; left: var(--m); right: var(--m); top: 58px; }
+.title { font-family: var(--hand); font-weight: 700; color: var(--ink); font-size: 60px; line-height: 1.1; margin: 0; text-wrap: balance; }
+.subtitle { font-size: 38px; color: var(--marker-blue); margin: 8px 0 0; font-weight: 400; }
+.tracker { display: none; }
+.slide-body { position: absolute; left: var(--m); right: var(--m); top: 190px; height: 800px; }
+.slide-body.full { top: 70px; height: 940px; }
+.slide-body.middle { display: flex; flex-direction: column; justify-content: center; }
+.slide-foot { position: absolute; left: var(--m); right: calc(var(--m) + 80px); bottom: 40px; font-size: 22px; color: var(--muted); font-weight: 300; }
+.slide-foot p { margin: 0; }
+.slide-num { position: absolute; right: 64px; bottom: 40px; font-size: 24px; color: var(--muted); font-weight: 300; }
+.lead { font-size: 48px; color: var(--ink); max-width: 1400px; margin: 0 0 24px; }
+:where(.slide) p { margin: 0 0 16px; }
+
+/* the board: one drawing with handwriting placed on it */
+.board { position: relative; height: 100%; color: var(--ink); }
+.board > svg.sketch { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+/* place with style="--x: 320px; --y: 140px; --w: 300px" (board pixels, same as the drawing's viewBox) */
+.at { position: absolute; left: var(--x); top: var(--y); width: var(--w, max-content); margin: 0; }
+.at.r { left: auto; right: calc(100% - var(--x)); text-align: right; } /* --x is the right edge */
+.at.c { left: calc(var(--x) - var(--w) / 2); text-align: center; }   /* --x is the centre; needs --w */
+.slide .board p { margin: 0; }
+.lbl { font-size: 40px; line-height: 1.2; } .lbl-s { font-size: 32px; line-height: 1.2; } .lbl-l { font-size: 52px; line-height: 1.16; }
+.mk { font-size: 72px; font-weight: 700; line-height: 1.05; } .mk-xl { font-size: 128px; font-weight: 700; line-height: 1; }
+.nw { white-space: nowrap; }
+
+/* line art: authored as plain SVG, icons and figures; redrawn by hand and drawn on by deck.js */
+svg.sketch { display: block; overflow: visible; width: 100%; height: 100%; }
+svg.sketch :is(rect, circle, ellipse, line, polyline, polygon, path) {
+  stroke: var(--line-c, var(--marker-black)); stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round;
+}
+svg.sketch .blue { --line-c: var(--marker-blue); } svg.sketch .red { --line-c: var(--marker-red); }
+svg.sketch .green { --line-c: var(--marker-green); } svg.sketch .orange { --line-c: var(--marker-orange); }
+svg.sketch .black { --line-c: var(--marker-black); } svg.sketch .muted { --line-c: #9AA0A7; }
+svg.sketch .thin { stroke-width: 2.6; } svg.sketch .thick { stroke-width: 6.5; }
+.sketch-layer path { stroke-linecap: round; stroke-linejoin: round; }
+svg.sketch text { font-family: var(--hand); font-size: 36px; fill: var(--ink); stroke: none; }
+svg.sketch text.blue { fill: var(--marker-blue); } svg.sketch text.red { fill: var(--marker-red); } svg.sketch text.green { fill: var(--marker-green); }
+svg.sketch text.small { font-size: 28px; fill: var(--muted); }
+svg.sketch text.big { font-size: 52px; font-weight: 700; }
+.pen { filter: drop-shadow(6px 9px 6px rgba(0,0,0,.2)); }
+
+/* layout helpers and the shared components, in handwriting */
+.cols-2, .cols-3, .cols-4 { display: grid; gap: 70px; align-items: start; }
+.cols-2 { grid-template-columns: 1fr 1fr; }
+.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.cols-4 { grid-template-columns: repeat(4, 1fr); gap: 48px; }
+.split-60 { display: grid; grid-template-columns: 1.5fr 1fr; gap: 70px; align-items: start; }
+.split-40 { display: grid; grid-template-columns: 1fr 1.5fr; gap: 70px; align-items: start; }
+.fill { height: 100%; }
+.stack > * + * { margin-top: 26px; }
+.center { text-align: center; }
+
+.bullets { list-style: none; padding: 0; margin: 0; }
+.bullets > li { position: relative; padding-left: 52px; margin-bottom: 22px; }
+.bullets > li::before { content: "—"; position: absolute; left: 0; top: -.02em; color: var(--marker-blue); font-weight: 700; }
+.bullets > li > ul { list-style: none; padding-left: 0; font-size: 32px; color: var(--muted); margin-top: 6px; }
+
+.sticky {
+  --tilt: -1.5deg; --note: #FFF1A6; rotate: var(--tilt);
+  width: fit-content; min-width: 240px; max-width: 560px;
+  background: var(--note); color: #2B2A24; padding: 28px 32px 32px; font-size: 34px; line-height: 1.25;
+  box-shadow: 0 1px 1px rgba(0,0,0,.08), 0 12px 22px -10px rgba(0,0,0,.26);
+  border-radius: 2px 2px 14px 2px;
+}
+.sticky.pink { --note: #FFD3DF; } .sticky.blue { --note: #D3E7FF; } .sticky.green { --note: #D9F2CC; }
+.board .sticky { position: absolute; }
+
+.stat .num { display: block; font-weight: 700; font-size: 150px; line-height: 1; color: var(--marker-red); letter-spacing: -.01em; }
+.stat .label { display: block; font-size: 40px; color: var(--ink); margin-top: 10px; max-width: 520px; }
+.stat .note { display: block; font-size: 28px; color: var(--muted); }
+.stats { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 60px; }
+
+.callout { font-size: 46px; color: var(--ink); padding: 20px 10px; }
+.callout-title { display: block; font-size: 30px; color: var(--marker-blue); }
+
+.quote { margin: 0; max-width: 1500px; position: relative; }
+.quote p { font-size: 74px; line-height: 1.18; font-weight: 700; color: var(--ink); margin: 0; text-wrap: balance; }
+.quote p::before { content: "\201C"; position: absolute; left: -.62em; top: -.08em; color: var(--marker-red); font-size: 1.6em; line-height: 1; }
+.quote cite { display: block; margin-top: 30px; font-style: normal; font-size: 32px; color: var(--marker-blue); }
+
+.pillars { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 56px; }
+.pillars h3 { font-size: 48px; color: var(--marker-blue); margin: 0 0 12px; line-height: 1.1; }
+.pillars p { font-size: 34px; }
+
+.process { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 90px; }
+.process > li .chev { display: block; font-weight: 700; font-size: 42px; color: var(--ink); padding: 18px 22px; margin-bottom: 18px; }
+.process > li p { font-size: 32px; padding: 0 10px; }
+
+.timeline { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 30px; }
+.timeline .when { display: block; font-weight: 700; font-size: 54px; color: var(--marker-red); }
+.timeline .what { display: block; font-size: 32px; margin-top: 8px; }
+
+.compare { display: grid; grid-template-columns: 1fr 120px 1fr; align-items: center; }
+.compare h3 { font-size: 50px; margin: 0 0 10px; }
+.compare > .from h3 { color: var(--muted); } .compare > .to h3 { color: var(--marker-green); }
+.compare > .arrow { font-size: 90px; text-align: center; color: var(--marker-blue); }
+
+.matrix { display: grid; grid-template-columns: 70px 1fr 1fr; grid-template-rows: 1fr 1fr 70px; gap: 0; height: 100%; }
+.matrix .q { padding: 26px 34px; font-size: 32px; border: 0 dashed var(--muted); }
+.matrix .q:nth-of-type(1) { border-right-width: 3px; border-bottom-width: 3px; }
+.matrix .q:nth-of-type(2) { border-bottom-width: 3px; }
+.matrix .q:nth-of-type(3) { border-right-width: 3px; }
+.matrix .q h4 { margin: 0 0 6px; font-size: 42px; color: var(--marker-blue); }
+.matrix .y-axis { grid-row: 1 / 3; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 30px; color: var(--muted); }
+.matrix .x-axis { grid-column: 2 / 4; text-align: center; font-size: 30px; color: var(--muted); align-self: center; }
+
+/* charts, drawn by hand */
+.chart { height: 560px; }
+.chart figcaption { font-size: 28px; color: var(--muted); }
+.chart .c-bar { fill: var(--marker-blue); stroke: var(--marker-black); stroke-width: 3; }
+.chart .c-bar.is-hl { fill: var(--marker-red); }
+.chart .c-bar.is-neg { fill: var(--marker-orange); } .chart .c-bar.is-total { fill: var(--marker-green); }
+.chart .c-axis, .chart .c-connector { stroke: var(--marker-black); stroke-width: 3; }
+.chart .c-line { stroke: var(--marker-blue); stroke-width: 5; } .chart .c-line.is-hl { stroke: var(--marker-red); }
+.chart .c-sector { fill: var(--marker-blue); stroke: var(--marker-black); stroke-width: 3; } .chart .c-sector.is-hl { fill: var(--marker-red); }
+.chart .c-sector.c-k1:not(.is-hl) { fill: var(--marker-green); } .chart .c-sector.c-k2:not(.is-hl) { fill: var(--marker-orange); }
+.chart .c-label { fill: var(--ink); font-size: 30px; }
+.chart .c-value { fill: var(--ink); font-size: 34px; font-weight: 700; }
+.chart .c-value.is-hl { fill: var(--marker-red); }
+
+/* cover / section / closing, for pages that are words only (most pages are a board) */
+.cover { position: absolute; left: var(--m); right: var(--m); top: 50%; transform: translateY(-55%); }
+.cover .title { font-size: 116px; line-height: 1.02; max-width: 1500px; }
+.cover .subtitle { font-size: 46px; margin-top: 30px; }
+.cover .byline { margin-top: 56px; font-size: 32px; color: var(--muted); display: flex; gap: 48px; }
+.section-mark { position: absolute; left: var(--m); top: 50%; transform: translateY(-50%); }
+.section-mark .no { display: inline-block; font-size: 120px; font-weight: 700; color: var(--marker-blue); line-height: 1; }
+.section-mark .title { font-size: 96px; margin-top: 14px; }
+.section-mark p { font-size: 40px; color: var(--muted); max-width: 1200px; margin-top: 18px; }
+.slide[data-layout="title"] .slide-num, .slide[data-layout="section"] .slide-num { display: none; }
+
+.credits { position: absolute; left: var(--m); top: 90px; max-width: 1400px; font-size: 22px; line-height: 1.5; color: var(--muted); }
+.credits h2 { font-size: 22px; font-weight: 700; color: var(--ink); margin: 0 0 12px; }
+.credits ol { list-style: none; margin: 0; padding: 0; }
+.credits li { margin: 0 0 8px; overflow-wrap: anywhere; }
+
+/* builds: nothing slides or fades in; the pen draws and writes what a step adds (deck.js). Without
+   animation (reduced motion, jumping, print) the step simply appears. */
+[data-step] { transition: opacity var(--build-dur) linear; }
+[data-step]:not(.is-in) { opacity: 0; translate: none; scale: none; }
+
+/* page turn: the old page goes, a clean one arrives, then the pen starts */
+::view-transition-old(slide) { animation: dd-out .24s ease-in both; }
+::view-transition-new(slide) { animation: dd-in .2s ease-out .22s both; }
+@keyframes dd-out { to { opacity: 0; } }
+@keyframes dd-in { from { opacity: 0; } }

@@ -18,7 +18,8 @@ Wait for both reviewers to finish before rebuilding: QA rewrites `qa/` and the r
 
 ## Evidence the reviewers get
 
-- `qa/contact.jpg` (all slides fully built), `qa/shots/sNN-kK.jpg` (every build step), `qa/motion/sNN.jpg` (filmstrips: one row per transition or step, frames at 10, 30, 55 and 100 % of the animation), `qa/overview.jpg`, `qa/report.md` and `qa/report.json` (measured findings, animation timings, interaction checks).
+- `qa/contact.jpg` (all slides fully built), `qa/shots/sNN-kK.jpg` (every build step), `qa/motion/sNN.jpg` (filmstrips: one row per transition or step, frames at 10, 30, 55 and 100 % of the animation), `qa/overview.jpg`, `qa/report.md` and `qa/report.json` (measured findings, animation timings, interaction checks; for doodle the Pen section: drawing time against time available, per step).
+- Doodle, motion reviewer: a 20–30 s passage rendered as video (`scripts/export.sh OUT/deck.html OUT/.work/probe.mp4 --from A --to B`) and a strip of frames from it (`ffmpeg -i probe.mp4 -vf "fps=2,scale=480:-1,tile=5x4" -frames:v 1 strip.jpg`), from the densest page and from one other.
 - `slides.html`, `deck.json`, `outline.md`, `transcript.json`.
 - `references/style-<style>.md`, `references/storyline.md`, `references/authoring.md`.
 
@@ -32,8 +33,8 @@ Score each 1–5 (5 = would ship to a demanding client unchanged).
 2. **Hierarchy and typography**: one focal point per slide; type scale respected; no widows or orphaned single words on titles; sensible line lengths; quotes typographic.
 3. **Layout and space**: elements align to a grid; margins consistent; balanced use of the canvas (no crowding, no accidental voids, no content jammed into a corner); consistent placement of recurring elements.
 4. **Colour and contrast**: accent used on the one thing that matters; colour meanings consistent; everything legible.
-5. **Visuals and data**: the right chart or diagram for the point; highlight on the key element; labels and units clear; diagrams show a relationship, not decoration.
-6. **Style fidelity and distinctiveness**: unmistakably the requested style as described in its guide; none of its "Avoid" items; does not look like a generic template.
+5. **Visuals and data**: the right chart or diagram for the point; highlight on the key element; labels and units clear; diagrams show a relationship, not decoration. Marks: every ring, ellipse or box drawn round text (a `data-sketch` mark or a hand-drawn shape) is larger than the text it surrounds, with clear space between the line and the letters, and crosses neither those words nor their neighbours; a ring through its text is a major finding. Look at each one in the shots.
+6. **Style fidelity and distinctiveness**: unmistakably the requested style as described in its guide; none of its "Avoid" items; does not look like a generic template. Doodle: every page is a drawing that carries its point (cover the words: does the picture still say it?), each icon and figure stands for something the speaker said, drawings read at a glance, three colours at most.
 7. **Content integrity**: spot-check at least five quotes and every number against `transcript.json`; verbatim quotes, numbers as stated, sources or notes with time ranges, nothing from outside the recording.
 8. **Rhythm across the deck**: layouts vary with purpose; pacing of dense and light slides; strong opening and close.
 
@@ -41,7 +42,7 @@ Score each 1–5 (5 = would ship to a demanding client unchanged).
 
 1. **Purpose**: every build reveals something in the order the speaker says it or the logic needs; nothing animates for decoration; the slide transition suits the style.
 2. **Timing and easing**: durations inside the style's budget (see the style guide and QA flags); natural easing; staggers short; nothing sluggish, nothing so fast it flickers. Judge from the filmstrips.
-3. **Choreography**: the first frames of each transition show a clean state (no flashes of final content, no layout jumps, no elements appearing then vanishing); draw-on order logical (whiteboard); morphs (minimal) connect genuinely shared elements.
+3. **Choreography**: the first frames of each transition show a clean state (no flashes of final content, no layout jumps, no elements appearing then vanishing); draw-on order logical (whiteboard, doodle); morphs (minimal) connect genuinely shared elements. Doodle: nothing appears without being drawn or written; the pen draws structure before detail and a drawing before its label; pages start nearly empty and are never shown finished on entry; the pen's pace in `qa/report.md` (Pen) stays under about 2.4x on every step; the video shows no pen, only the line being drawn; text is written at pen speed (measure a title in the video: it must not be complete within a few frames); no speck or dot shows before a stroke or a label starts; each label is written within about 2 s of its words.
 4. **Listen-along sync**: spot-check at least six cues (slide and step) against `transcript.json`: each reveal happens when its words are spoken (within about 2 s). Slides change when the speech moves on. Only synthesis slides are uncued. Cues never go backwards.
 5. **Build granularity**: never reveal a line before it is said (this beats "avoid trivial reveals"); no slide with more than about 8 steps; enumerations spoken one by one are built one by one; trivial reveals avoided; a statement or quote may have no build.
 6. **Robustness**: QA interaction checks pass (keyboard, URL, overview, resize, reduced motion, PDF, audio); no console errors; works offline (no remote URLs); the file size is reasonable.

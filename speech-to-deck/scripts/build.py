@@ -5,7 +5,7 @@ WORKDIR must contain:
   slides.html   the <section class="slide"> elements (optionally preceded by one <style> block
                 with deck-specific CSS). Local images referenced there are inlined.
   deck.json     {"title", "subtitle", "speaker", "date", "lang", "style", "audio", "transcript"}
-                (paths relative to WORKDIR; style = consulting | whiteboard | minimal)
+                (paths relative to WORKDIR; style = consulting | whiteboard | minimal | doodle)
 
 Writes WORKDIR/deck.html (or --out). With --audio-mode file the audio is written next to it
 as audio.mp3; with embed (default) everything is inside the one HTML file.
@@ -25,8 +25,9 @@ import tempfile
 
 SKILL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS = os.path.join(SKILL, "assets")
-STYLES = ("consulting", "whiteboard", "minimal")
-FONTS = {"consulting": ["sourceserif4", "plexsans"], "whiteboard": ["kalam"], "minimal": ["inter"]}
+STYLES = ("consulting", "whiteboard", "minimal", "doodle")
+FONTS = {"consulting": ["sourceserif4", "plexsans"], "whiteboard": ["kalam"], "minimal": ["inter"], "doodle": ["kalam"]}
+ROUGH = ("whiteboard", "doodle")  # styles drawn with rough.js
 
 
 def read(path):
@@ -66,6 +67,27 @@ def inline_images(fragment, workdir, warnings):
             data = base64.b64encode(f.read()).decode()
         return f'{attr}={q}data:{mime};base64,{data}{q}'
     return re.sub(r'(src|href)=(["\'])([^"\']+)\2', repl, fragment)
+
+
+def inline_icons(fragment, warnings):
+    """<g data-icon="tabler:rocket" .../> gets the icon's strokes; deck.js places and draws them.
+    Returns the fragment and the sets used (their licence notices travel with the deck)."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import icons
+    used = {}
+
+    def repl(m):
+        hit = icons.lookup(m.group(3))
+        if not hit:
+            close = ", ".join(icons.suggest(m.group(3)))
+            warnings.append(f"unknown icon {m.group(3)!r}" + (f"; close: {close}" if close else "") + " (scripts/icons.py find WORD)")
+            return m.group(0)
+        used[hit[0]] = used.get(hit[0], 0) + 1
+        return f"<g{m.group(1).rstrip(' /')}>{hit[2]}</g>"
+    fragment = re.sub(r'<g\b([^>]*\bdata-icon=(["\'])([^"\']+)\2[^>]*?)(?:/>|>\s*</g>)', repl, fragment, flags=re.S)
+    for m in re.finditer(r'<(?!g\b)(\w+)\b[^>]*\bdata-icon=', fragment):
+        warnings.append(f"data-icon belongs on an empty <g> inside svg.sketch, not on <{m.group(1)}>")
+    return fragment, used
 
 
 QUOTES = {  # language: (open double, close double, open single, close single)
@@ -203,6 +225,7 @@ def main():
     if m:
         deck_css, fragment = m.group(1).strip(), fragment[m.end():]
     fragment = inline_images(fragment, wd, warnings)
+    fragment, icon_sets = inline_icons(fragment, warnings)
     if meta.get("smart_quotes", True):
         fragment = smart_quotes(fragment, meta.get("lang", "en"))
     fragment = bind_title_words(fragment, meta.get("lang", "en"))
@@ -214,6 +237,13 @@ def main():
         transcript = [[s["start"], s["end"], s["text"]] for s in t["segments"]]
         duration = t.get("duration")
     n_slides, n_cues, n_steps = check_slides(fragment, duration, warnings)
+    if style == "doodle":  # what the pen cannot draw
+        if re.search(r'stroke-dasharray', fragment + deck_css):
+            warnings.append("stroke-dasharray in a doodle deck: dashed lines cannot be drawn on (the pen uses the dash pattern); draw short separate strokes")
+        if re.search(r'<g\b[^>]*\btransform=["\'][^"\']*scale\(', fragment):
+            warnings.append("a scaled <g> in svg.sketch: the hand-drawn wobble and line width scale with it; draw at final size (data-size on icons and figures)")
+        if re.search(r'<(use|image|marker|linearGradient|radialGradient|filter)\b', fragment):
+            warnings.append("svg <use>, <image>, markers, gradients and filters are not drawn by the pen; use plain shapes, icons and figures")
 
     audio, audio_b64 = None, ""
     mode = args.audio_mode or meta.get("audio_mode") or "embed"
@@ -245,10 +275,15 @@ def main():
         "transcript": transcript, "audio": audio,
     }
     vendor = ""
-    if style == "whiteboard" or meta.get("rough"):
+    if style in ROUGH or meta.get("rough"):
         # MIT: the copyright and permission notice must travel with every copy of rough.js.
         notice = "/*!\n" + read(os.path.join(ASSETS, "vendor", "rough.LICENSE.txt")).strip().replace("*/", "* /") + "\n*/\n"
         vendor = "<script>\n" + (notice + read(os.path.join(ASSETS, "vendor", "rough.min.js"))).replace("</script", "<\\/script") + "\n</script>"
+
+    icon_notice = ""
+    for name in sorted(icon_sets):  # MIT / ISC: the notices must travel with every copy of the artwork
+        licence = read(os.path.join(ASSETS, "icons", f"{name}.LICENSE.txt")).strip().replace("--", "- -")
+        icon_notice += f"<!-- Icons drawn in this deck: {name} icon set.\n{licence}\n-->\n"
 
     import hashlib
     stamp = hashlib.sha1("".join(read(os.path.join(ASSETS, *p)) for p in (("engine", "deck.js"), ("engine", "deck.css"), ("themes", f"{style}.css"))).encode()).hexdigest()[:10]
@@ -262,7 +297,7 @@ def main():
         "{{ENGINE_CSS}}": read(os.path.join(ASSETS, "engine", "deck.css")),
         "{{THEME_CSS}}": read(os.path.join(ASSETS, "themes", f"{style}.css")),
         "{{DECK_CSS}}": deck_css,
-        "{{SLIDES}}": fragment.strip(),
+        "{{SLIDES}}": icon_notice + fragment.strip(),
         "{{DATA_JSON}}": json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/"),
         "{{VENDOR_JS}}": vendor,
         "{{AUDIO_B64}}": audio_b64,
@@ -273,7 +308,7 @@ def main():
     with open(out, "w", encoding="utf-8") as f:
         f.write(page)
 
-    report = {"out": out, "style": style, "assets": stamp, "slides": n_slides, "cued_slides": n_cues, "build_steps": n_steps,
+    report = {"out": out, "style": style, "assets": stamp, "slides": n_slides, "cued_slides": n_cues, "build_steps": n_steps, "icons": sum(icon_sets.values()),
               "audio": (mode if audio else "none"), "size_kb": round(os.path.getsize(out) / 1024), "warnings": warnings}
     print(json.dumps(report, indent=1, ensure_ascii=False))
 

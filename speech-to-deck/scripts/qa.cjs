@@ -29,6 +29,7 @@ const BUDGET = { // per-style expectations used for flags
   consulting: { words: 110, stepMs: 650, chartMs: 1150, entryMs: 550, minFont: 16, noOverlap: true }, // chartMs includes --entry-delay
   whiteboard: { words: 45, stepMs: 2200, chartMs: 2400, entryMs: 2600, minFont: 20 },
   minimal: { words: 20, stepMs: 1500, chartMs: 1700, entryMs: 1800, minFont: 20 },
+  doodle: { words: 30, stepMs: 3700, chartMs: 4100, entryMs: 4100, minFont: 20, pen: true }, // by hand a step draws for at most --pen-max (3.2 s)
 };
 
 async function launch() {
@@ -170,6 +171,23 @@ function auditSlide({ i, minFont, style }) {
   slide.querySelectorAll('[data-sketch-pad]').forEach(el => { if (parseFloat(el.dataset.sketchPad) < 0) issues.push({ sev: 'minor', kind: 'workaround', msg: `negative data-sketch-pad (${el.dataset.sketchPad}): marks are placed from font metrics now; remove it: ${desc(el)}` }); });
   slide.querySelectorAll('[data-sketch-fit="box"]').forEach(el => { if (getComputedStyle(el).display.startsWith('inline') && el.textContent.trim()) issues.push({ sev: 'minor', kind: 'workaround', msg: `data-sketch-fit="box" on inline text: the mark follows the box, not the ink: ${desc(el)}` }); });
   if (slide.querySelector('svg.sketch [style*="--d"], .grow-up, .grow-right, .grow-out, .hl-box')) issues.push({ sev: 'minor', kind: 'workaround', msg: 'inline --d timings, grow-* classes or .hl-box insets are ignored by the engine (drawings chain in document order; highlights fit the words)' });
+  // A ring or a box drawn round words must be larger than the words: no stroke through the text it marks.
+  slide.querySelectorAll('.sketch-layer > *').forEach(n => {
+    const mk = n._mark; if (!mk || !/^(circle|box)$/.test(mk.type) || !mk.el._geo) return;
+    const ink = mk.el._geo.lines, paths = n.tagName === 'g' ? [...n.querySelectorAll('path,ellipse,rect')] : [n];
+    let inside = 0, total = 0;
+    for (const p of paths) {
+      let len = 0; try { len = p.getTotalLength(); } catch {}
+      for (let d = 0; d <= len; d += 6) { const pt = p.getPointAtLength(d); total++; if (ink.some(r => pt.x > r.x + 1 && pt.x < r.x + r.w - 1 && pt.y > r.y + 1 && pt.y < r.y + r.h - 1)) inside++; }
+    }
+    // Neighbouring words: the x-height band of every other piece of text on the slide.
+    const others = [], tw = document.createTreeWalker(slide, NodeFilter.SHOW_TEXT, { acceptNode: t => (!t.textContent.trim() || mk.el.contains(t) || t.parentElement.closest('.notes,.slide-num,script,style') || !visible(t.parentElement)) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    while (tw.nextNode()) { const rg = document.createRange(); rg.selectNodeContents(tw.currentNode); for (const r of rg.getClientRects()) if (r.width > 2) others.push({ x: (r.left - sr.left) / s, y: (r.top - sr.top) / s + r.height / s * 0.34, w: r.width / s, h: r.height / s * 0.36 }); }
+    let near = 0;
+    for (const p of paths) { let len = 0; try { len = p.getTotalLength(); } catch {} for (let d = 0; d <= len; d += 6) { const pt = p.getPointAtLength(d); if (others.some(r => pt.x > r.x && pt.x < r.x + r.w && pt.y > r.y && pt.y < r.y + r.h)) near++; } }
+    if (near > 1) issues.push({ sev: 'major', kind: 'mark', msg: `the ${mk.type} runs through neighbouring words (${Math.round(near / total * 100)}% of the stroke); give the marked phrase room (its own line or label, more space around it) or mark fewer words: ${desc(mk.el)}` });
+    if (inside) issues.push({ sev: 'major', kind: 'mark', msg: `the ${mk.type} runs through the words it marks (${Math.round(inside / total * 100)}% of the stroke is on the text); it must be larger than the text: keep the phrase on one line, mark fewer words or raise data-sketch-pad: ${desc(mk.el)}` });
+  });
   // Empty boxes left in the markup read as missing content.
   slide.querySelectorAll('.slide-body p, .slide-body li, .slide-body h3, .slide-body dd, .slide-body dt').forEach(el => { if (!el.textContent.trim() && !el.querySelector('img,svg') && visible(el)) issues.push({ sev: 'minor', kind: 'content', msg: `empty ${el.tagName.toLowerCase()} in the body (remove it rather than prop it open)` }); });
   if (style === 'consulting') {
@@ -262,7 +280,8 @@ function auditSlide({ i, minFont, style }) {
             return { type: a.constructor.name, name, target: `${tgt?.tagName?.toLowerCase() || ''}${pe}.${String(who).trim().split(/\s+/).slice(0, 3).join('.')}${isCount ? '[data-count]' : ''}`, start, delay: Math.round(t.delay || 0) + start, duration: Math.round(t.duration || 0), easing };
           });
           const totalMs = list.reduce((m, a) => Math.max(m, a.delay + a.duration), 0);
-          return { totalMs, anims: list };
+          const d = deck.lastDraw; // pen styles: what this transition asked the pen to draw
+          return { totalMs, anims: list, draw: d && d.i === deck.state.i && d.k === deck.state.k ? d : null };
         });
         const frames = [];
         if (info.totalMs > 0) {
@@ -277,7 +296,7 @@ function auditSlide({ i, minFont, style }) {
           await page.evaluate(() => { for (const a of document.getAnimations()) { try { a.finish(); } catch {} } });
         }
         await sleep(60);
-        rows.push({ label: tr.label, totalMs: info.totalMs, count: info.anims.length, anims: info.anims.slice(0, 14), frames });
+        rows.push({ label: tr.label, totalMs: info.totalMs, count: info.anims.length, anims: info.anims.slice(0, 14), frames, draw: info.draw });
       }
       const flagsOut = [];
       rows.forEach(r => {
@@ -290,10 +309,10 @@ function auditSlide({ i, minFont, style }) {
         if (r.totalMs > lim * 1.5) flagsOut.push({ sev: 'major', msg: `${r.label}: ${r.totalMs}ms of animation (budget ${lim}ms)` });
         else if (r.totalMs > lim) flagsOut.push({ sev: 'minor', msg: `${r.label}: ${r.totalMs}ms of animation (budget ${lim}ms)` });
         if (r.label.startsWith('step') && r.count === 0) flagsOut.push({ sev: 'major', msg: `${r.label}: nothing animates on this build step` });
-        const lin = (r.anims || []).filter(a => (a.type === 'CSSTransition' || a.type === 'Animation') && a.easing === 'linear' && a.duration > 400 && !/stroke|opacity|s2d-count/i.test(a.name));
+        const lin = (r.anims || []).filter(a => (a.type === 'CSSTransition' || a.type === 'Animation') && a.easing === 'linear' && a.duration > 400 && !/stroke|opacity|s2d-|clipPath/i.test(a.name)); // a pen moves at a steady speed
         if (lin.length) flagsOut.push({ sev: 'minor', msg: `${r.label}: ${lin.length} long linear animation(s) feel mechanical` });
       });
-      report.motion.push({ i, rows: rows.map(r => ({ label: r.label, totalMs: r.totalMs, count: r.count || 0, anims: r.anims })), flags: flagsOut });
+      report.motion.push({ i, rows: rows.map(r => ({ label: r.label, totalMs: r.totalMs, count: r.count || 0, anims: r.anims, draw: r.draw || undefined })), flags: flagsOut });
       // filmstrip sheet
       const strip = rows.filter(r => r.frames && r.frames.length);
       if (strip.length) {
@@ -447,6 +466,27 @@ function auditSlide({ i, minFont, style }) {
     const wait = meta.hasAudio && first && own != null ? first.t - own : Infinity;
     s.issues.push({ sev: wait > 8 ? 'major' : 'minor', kind: 'empty', msg: `the slide shows nothing when it appears (step 0)${Number.isFinite(wait) ? `; first step after ${wait.toFixed(1)} s` : ''}` });
   });
+  // Pen styles: the drawing must fit the time the speaker gives it. In listen-along the pen draws
+  // for about 72 % of the gap to the next cue, at 0.5x to 3.3x its natural pace.
+  const penRows = [];
+  if (budget.pen) {
+    const cueList = cueDump.cues;
+    for (const m of report.motion) for (const r of m.rows) {
+      if (!r.draw) continue;
+      const k = r.label.startsWith('step') ? parseInt(r.label.slice(5), 10) : 0;
+      const ix = cueList.findIndex(c => c.i === m.i && c.k === k);
+      const gap = ix < 0 ? null : (ix + 1 < cueList.length ? cueList[ix + 1].t : (meta.duration || cueList[ix].t + 8)) - cueList[ix].t;
+      const nat = r.draw.natural / 1000;
+      const row = { slide: m.i + 1, k, natural: nat, gap, strokes: r.draw.strokes, chars: r.draw.chars, pace: gap ? Math.min(3.33, Math.max(0.5, nat / (gap * 0.72))) : null };
+      penRows.push(row);
+      if (gap == null) continue;
+      const where = `slide ${m.i + 1}`, what = k ? `step ${k}` : 'the opening drawing';
+      if (nat * 0.3 > gap) pacing.push({ sev: 'major', where, msg: `${what} needs ${(nat * 0.3).toFixed(1)} s even at top pen speed (${r.draw.strokes} strokes, ${r.draw.chars} letters) but the next cue comes after ${gap.toFixed(1)} s; simplify the drawing or spread it over more steps` });
+      else if (nat / (gap * 0.72) > 2.4) pacing.push({ sev: 'minor', where, msg: `${what} is drawn at ${(nat / (gap * 0.72)).toFixed(1)}x the natural pen pace to fit ${gap.toFixed(1)} s (${r.draw.strokes} strokes, ${r.draw.chars} letters); it will look rushed: draw less here, or move part of it to the next step` });
+      else if (gap - nat * 2 > 20) pacing.push({ sev: 'minor', where, msg: `${what} is finished after ${(nat * 2).toFixed(0)} s and then nothing is drawn for ${(gap - nat * 2).toFixed(0)} s; add a drawn beat where the speaker makes the next point` });
+    }
+    report.pen = penRows;
+  }
   if (meta.style === 'consulting' && cueDump.counts > 1) pacing.push({ sev: 'minor', where: 'deck', msg: `${cueDump.counts} count-up numbers; consulting allows at most one hero count` });
   report.pacing = pacing;
 
@@ -474,6 +514,8 @@ function auditSlide({ i, minFont, style }) {
     ...report.slides.map(s => `| ${s.i + 1} | ${s.title.replace(/\|/g, '/')} | ${s.layout} | ${s.words} | ${s.steps} | ${s.cue ?? ''} |`), '',
     '## Motion (ms of animation per transition)', '',
     ...report.motion.map(m => `- slide ${m.i + 1}: ` + m.rows.map(r => `${r.label} ${r.totalMs}`).join(', ')), '',
+    ...(penRows.length ? ['## Pen (seconds of drawing at natural pace vs seconds until the next cue)', '',
+      ...penRows.map(r => `- slide ${r.slide} ${r.k ? 'step ' + r.k : 'entry'}: ${r.natural.toFixed(1)} s to draw (${r.strokes} strokes, ${r.chars} letters)${r.gap != null ? `, ${r.gap.toFixed(1)} s available, pen at ${r.pace.toFixed(1)}x` : ', no cue'}`), ''] : []),
     '## Interaction', '', ...report.interaction.map(x => `- ${x.ok ? 'pass' : 'FAIL'}: ${x.name}${x.ok ? '' : ' — ' + x.detail}`), '',
     `Artifacts: shots/ (every step), motion/ (filmstrips), contact.jpg, overview.jpg${flags.has('--no-pdf') ? '' : ', deck.pdf'}.`,
   ].join('\n');

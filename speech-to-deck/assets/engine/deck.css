@@ -51,9 +51,35 @@ svg [data-step]:not(.is-in) { translate: none; scale: none; }
   pointer-events: none; overflow: visible; z-index: 50;
 }
 .sketch-layer.is-highlight-layer { mix-blend-mode: var(--sketch-blend, normal); } /* multiply on light pages: the highlighter sits behind the ink */
-.rough-draw:not(.is-in), .rough-shape.is-pending { visibility: hidden; }
-body.is-overview .rough-shape.is-pending { visibility: visible; }
+.rough-draw:not(.is-in), .is-pending { visibility: hidden; } /* is-pending: about to be drawn or written on entry */
+body.is-overview .is-pending { visibility: visible; }
 .rough-draw[data-step] { opacity: 1 !important; translate: none !important; scale: none !important; transition: none !important; }
+
+/* Stroke icons (<g data-icon>) and stick figures (<g data-figure>) placed by deck.js. An icon keeps
+   its 24-unit artwork under a scale (--s), so its line is divided back to the drawing's width. */
+svg.sketch g.icon :is(rect, circle, ellipse, line, polyline, polygon, path) {
+  fill: none; stroke-linecap: round; stroke-linejoin: round;
+  stroke-width: calc(var(--icon-line, 4px) / var(--s, 1));
+}
+
+/* The pen (themes with --pen: on): a marker on the tip of whatever is being drawn or written. */
+.pen-layer {
+  position: absolute; left: 0; top: 0; width: 1920px; height: 1080px;
+  pointer-events: none; overflow: visible; z-index: 60;
+}
+.pen { opacity: 0; transition: opacity .16s linear; }
+.pen.is-on { opacity: 1; }
+.pen-nib, .pen-band { fill: var(--pen-ink, #222); }
+.pen-neck { fill: #2B2E33; }
+.pen-barrel { fill: #F5F5F2; stroke: #B4B9BF; stroke-width: 2; }
+body.is-overview .pen-layer { display: none; }
+
+/* Video export (deck.capture): only the slide and, when asked for, the captions; no pen. */
+body.is-capture .deck-controls, body.is-capture .deck-player, body.is-capture .deck-progress,
+body.is-capture .deck-toast, body.is-capture .deck-help { display: none !important; }
+body.is-capture .deck-caption { bottom: 46px; font-size: 26px; }
+body.is-capture .pen-layer { display: none; } /* the video shows the line being drawn, not a pen */
+body.is-capture .slide-num { display: none; } /* a page number would pop in at every cut */
 
 /* Charts rendered by deck.js from <figure class="chart">. */
 .chart { margin: 0; position: relative; }
@@ -191,6 +217,7 @@ body.is-overview .deck-chrome { display: none; }
   [data-step] { transition: opacity .15s linear !important; translate: none !important; scale: none !important; }
   .chart .c-bar, .chart .c-seg-v, .chart .c-label, .chart .c-value, .chart .c-line, .chart .c-arc, .chart .c-dot { transition: none !important; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  .pen-layer { display: none; }
   .deck-progress, .deck-progress > i, .deck-controls, .deck-player, .deck-toast { transition-duration: .1s !important; }
 }
 
@@ -202,7 +229,8 @@ body.is-overview .deck-chrome { display: none; }
   .deck { position: static; transform: none; width: 1920px; height: auto; }
   .slide { display: block !important; position: relative; break-after: page; page-break-after: always; }
   .slide [data-step] { opacity: 1 !important; translate: none !important; scale: none !important; transition: none !important; }
-  .rough-draw, .rough-shape.is-pending { visibility: visible !important; }
+  .rough-draw, .is-pending { visibility: visible !important; }
+  .pen-layer { display: none !important; }
   body::before, body::after, .deck-stage::before, .deck-stage::after, .deck::before, .deck::after { display: none !important; } /* no stray pages */
   .deck-chrome, .deck-help, .deck-toast, .deck-black { display: none !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
